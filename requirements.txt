@@ -1,0 +1,17 @@
+# FastAPI
+fastapi>=0.115.0,<1
+uvicorn[standard]>=0.32.0,<1
+python-multipart>=0.0.9
+pydantic-settings>=2.6.0,<3
+
+# LangChain (minimal surface: no umbrella "langchain" meta-package)
+langchain-core>=0.3.0,<0.4
+langchain-google-genai>=2.0.0,<3
+langchain-pinecone>=0.2.0,<0.3
+langchain-text-splitters>=0.3.0,<0.4
+
+pinecone[grpc]>=5.0.0,<6
+
+pymupdf>=1.24.0,<2
+python-dotenv>=1.0.0,<2
+pymongo>=4.9.0,<5

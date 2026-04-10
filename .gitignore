@@ -1,0 +1,18 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python
+**/__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Local data (PDFs, manifest, JSON history)
+data/
+
+# Environment
+.env
+
+# OS / editor
+.DS_Store
