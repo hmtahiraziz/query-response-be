@@ -92,13 +92,20 @@ def run_with_retry(
     Uses API hint (e.g. "Please retry in 15.2s") when present, else exponential
     backoff with jitter (capped).
     """
-    last: BaseException | None = None
     for attempt in range(max_retries):
         try:
             return fn()
         except BaseException as exc:
-            last = exc
-            if not _is_rate_limit_or_quota(exc) or attempt >= max_retries - 1:
+            can_retry = _is_rate_limit_or_quota(exc) and attempt < max_retries - 1
+            if not can_retry:
+                logger.error(
+                    "%s failed (attempt %s/%s): %s",
+                    operation,
+                    attempt + 1,
+                    max_retries,
+                    exc,
+                    exc_info=True,
+                )
                 raise
             hint = parse_retry_after_seconds(exc)
             if hint is not None:
@@ -114,8 +121,7 @@ def run_with_retry(
                 delay,
             )
             time.sleep(delay)
-    assert last is not None
-    raise last
+    raise RuntimeError(f"{operation}: retry loop exhausted unexpectedly")
 
 
 def invoke_chat_with_retry(
