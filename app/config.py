@@ -63,13 +63,15 @@ class Settings(BaseSettings):
     rag_mmr_lambda: float = Field(default=0.55, ge=0.0, le=1.0)
 
     cors_origins: str = Field(
-        default="http://localhost:3000",
-        description="Comma-separated origins for CORS",
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        description="Comma-separated origins for CORS (must match the browser address bar exactly)",
     )
 
     mongodb_uri: str | None = Field(
         default=None,
-        description="MongoDB connection string; if unset, cover letter history uses data/cover_letter_history.json",
+        description=(
+            "MongoDB connection string; if unset, project manifest / history / rules use JSON files under data/"
+        ),
     )
     mongodb_db_name: str = Field(
         default="portfolio_cover_letter",
@@ -83,9 +85,18 @@ class Settings(BaseSettings):
         default="assistant_rules",
         description="Collection for global + chat assistant rules (single document)",
     )
+    mongodb_collection_projects: str = Field(
+        default="portfolio_projects",
+        description="Collection for ingested project metadata (replaces data/projects.json when MongoDB is set)",
+    )
 
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        out: list[str] = []
+        for o in self.cors_origins.split(","):
+            s = o.strip().rstrip("/")
+            if s:
+                out.append(s)
+        return out
 
 
 @lru_cache
