@@ -12,7 +12,8 @@ venv/
 data/
 
 # Environment
-.env
 
 # OS / editor
 .DS_Store
+config.bat
+node_modules
