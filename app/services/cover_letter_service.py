@@ -2,13 +2,40 @@
 
 from __future__ import annotations
 
+import logging
+
 from langchain_core.documents import Document
+from langchain_core.messages import BaseMessage
 
 from app.config import Settings, get_settings
+
+logger = logging.getLogger(__name__)
 from app.models import SourceSnippet
 from app.services.gemini_retry import invoke_chat_with_retry
 from app.services.gemini_service import get_chat_model
 from app.services.pinecone_service import retrieve_context
+
+
+def _extract_llm_text(msg: BaseMessage) -> str:
+    """Normalize LangChain message content (str or multi-part blocks) to plain text."""
+    raw = getattr(msg, "content", None)
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, list):
+        parts: list[str] = []
+        for item in raw:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                t = item.get("text")
+                if isinstance(t, str):
+                    parts.append(t)
+            else:
+                parts.append(str(item))
+        return "".join(parts)
+    return str(raw)
 
 
 def format_context_blocks(docs: list[Document]) -> str:
@@ -118,7 +145,16 @@ def generate_cover_letter(
         max_retries=s.gemini_max_retries,
         retry_cap_seconds=s.gemini_retry_cap_seconds,
     )
-    text = msg.content.strip()
+    text = _extract_llm_text(msg).strip()
+    if not text:
+        logger.error(
+            "Gemini returned empty content for generate_cover_letter (model=%s)",
+            s.gemini_chat_model,
+        )
+        raise RuntimeError(
+            "The language model returned an empty response. "
+            "Verify GEMINI_API_KEY and GEMINI_CHAT_MODEL, check quotas, and try again."
+        )
 
     sources: list[SourceSnippet] = []
     for d in docs:
@@ -185,7 +221,16 @@ def refine_cover_letter(
         max_retries=s.gemini_max_retries,
         retry_cap_seconds=s.gemini_retry_cap_seconds,
     )
-    text = msg.content.strip()
+    text = _extract_llm_text(msg).strip()
+    if not text:
+        logger.error(
+            "Gemini returned empty content for refine_cover_letter (model=%s)",
+            s.gemini_chat_model,
+        )
+        raise RuntimeError(
+            "The language model returned an empty response. "
+            "Verify GEMINI_API_KEY and GEMINI_CHAT_MODEL, check quotas, and try again."
+        )
 
     sources: list[SourceSnippet] = []
     for d in docs:
