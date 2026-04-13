@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -42,6 +43,8 @@ from app.services.pdf_service import chunk_pages_to_documents, extract_pages
 from app.services.pinecone_errors import pinecone_connection_user_hint
 from app.services.pinecone_service import delete_project_vectors, ingest_documents, reset_index_cache
 
+logger = logging.getLogger(__name__)
+
 _SAFE_NAME = __import__("re").compile(r"[^a-zA-Z0-9._-]")
 
 
@@ -61,9 +64,11 @@ async def lifespan(_: FastAPI):
     os.environ.setdefault("GOOGLE_API_KEY", s.gemini_api_key)
     ensure_data_dirs()
     if (s.mongodb_uri or "").strip():
-        from app.services.cover_letter_history_mongo import ensure_indexes
+        from app.services.cover_letter_history_mongo import ensure_indexes as history_ensure_indexes
+        from app.services.manifest_mongo import ensure_indexes as manifest_ensure_indexes
 
-        ensure_indexes()
+        history_ensure_indexes()
+        manifest_ensure_indexes()
     yield
 
 
@@ -96,6 +101,9 @@ def server_info() -> dict[str, Any]:
         if (s.mongodb_uri or "").strip()
         else "json_file",
         "assistant_rules_backend": "mongodb"
+        if (s.mongodb_uri or "").strip()
+        else "json_file",
+        "projects_backend": "mongodb"
         if (s.mongodb_uri or "").strip()
         else "json_file",
         "gemini_chat_model": s.gemini_chat_model,
@@ -259,6 +267,7 @@ def post_cover_letter(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
+        logger.exception("Cover letter generation failed")
         hint = pinecone_connection_user_hint(exc)
         raise HTTPException(
             status_code=503 if hint else 502,
@@ -306,6 +315,7 @@ def post_refine_cover_letter(body: RefineCoverLetterRequest) -> RefineCoverLette
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
+        logger.exception("Cover letter refinement failed")
         hint = pinecone_connection_user_hint(exc)
         raise HTTPException(
             status_code=503 if hint else 502,
