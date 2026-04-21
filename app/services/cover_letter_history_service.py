@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Any
 
-from app.config import COVER_LETTER_HISTORY_MAX, COVER_LETTER_HISTORY_PATH, ensure_data_dirs, get_settings
+from app.core.config import COVER_LETTER_HISTORY_MAX, COVER_LETTER_HISTORY_PATH, ensure_data_dirs, get_settings
 from app.services.history_versions import normalize_versions_for_detail
 
 
