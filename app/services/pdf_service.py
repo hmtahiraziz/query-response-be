@@ -9,7 +9,7 @@ import fitz
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from app.config import Settings
+from app.core.config import Settings
 
 
 def extract_pages(file_path: str) -> List[Tuple[int, str]]:
@@ -29,6 +29,7 @@ def chunk_pages_to_documents(
     source_filename: str,
     pages: List[Tuple[int, str]],
     settings: Settings,
+    embedding_provider: str = "openai",
 ) -> List[Document]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.chunk_size,
@@ -50,6 +51,7 @@ def chunk_pages_to_documents(
                         "project_name": safe_name,
                         "page": page_num,
                         "source_filename": safe_file,
+                        "embedding_provider": embedding_provider,
                     },
                 )
             )
