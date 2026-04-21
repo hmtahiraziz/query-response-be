@@ -8,9 +8,12 @@ from langchain_core.documents import Document
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone
 
-from app.config import Settings, get_settings
-from app.services.gemini_service import get_embeddings_model
+from app.core.config import Settings, get_settings
+from app.services.openai_service import get_embeddings_model
 from app.services.pinecone_errors import pinecone_connection_user_hint
+
+# Only vectors from OpenAI ingest are used for RAG (legacy Gemini chunks lack this field).
+RAG_METADATA_FILTER: dict = {"embedding_provider": {"$eq": "openai"}}
 
 _pc: Pinecone | None = None
 _index = None
@@ -83,6 +86,7 @@ def retrieve_context(
             k=k,
             fetch_k=fetch_k,
             lambda_mult=s.rag_mmr_lambda,
+            filter=RAG_METADATA_FILTER,
         )
 
     try:
