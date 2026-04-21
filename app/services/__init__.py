@@ -1,1 +1,1 @@
-"""Business logic: PDF ingestion, Pinecone, Gemini."""
+"""Business logic: PDF ingestion, Pinecone, OpenAI."""
