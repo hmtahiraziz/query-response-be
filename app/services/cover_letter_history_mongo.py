@@ -10,7 +10,7 @@ from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
 
-from app.config import COVER_LETTER_HISTORY_MAX, get_settings
+from app.core.config import COVER_LETTER_HISTORY_MAX, get_settings
 from app.services.history_versions import normalize_versions_for_detail
 
 _client: MongoClient | None = None
