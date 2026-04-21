@@ -1,25 +1,8 @@
-"""API request/response models."""
+"""Cover letter generation, refinement, and history API models."""
 
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
-
-class ProjectSummary(BaseModel):
-    project_id: str
-    name: str
-    filename: str
-    chunks: int
-    pages: int
-    created_at: int
-
-
-class IngestResponse(BaseModel):
-    project_id: str
-    name: str
-    filename: str
-    pages: int
-    chunks: int
 
 
 class CoverLetterRequest(BaseModel):
@@ -99,12 +82,26 @@ class CoverLetterHistoryUpdate(BaseModel):
     sources: list[SourceSnippet] | None = None
 
 
-class AssistantRulesResponse(BaseModel):
-    global_rules: str
-    chat_rules: str
-    updated_at: int = 0
+class ClaimItem(BaseModel):
+    """One factual claim tied to a portfolio excerpt index (1-based, order in context)."""
+
+    claim: str = Field(..., max_length=2000)
+    excerpt_index: int = Field(..., ge=1, le=500)
 
 
-class AssistantRulesUpdate(BaseModel):
-    global_rules: str = Field(default="", max_length=16_000)
-    chat_rules: str = Field(default="", max_length=16_000)
+class LetterSelfCheck(BaseModel):
+    """Model-reported compliance; informational only (not trusted as proof)."""
+
+    global_rules_addressed: bool = True
+    chat_rules_addressed: bool = True
+    structured_policy_met: bool = True
+    within_max_words: bool = True
+    notes: str = Field(default="", max_length=1000)
+
+
+class CoverLetterStructuredOutput(BaseModel):
+    """Structured response from the LLM for generate + refine."""
+
+    draft_text: str = Field(..., min_length=10, max_length=100_000)
+    claims: list[ClaimItem] = Field(default_factory=list, max_length=40)
+    self_check: LetterSelfCheck = Field(default_factory=LetterSelfCheck)

@@ -6,7 +6,7 @@ pydantic-settings>=2.6.0,<3
 
 # LangChain (minimal surface: no umbrella "langchain" meta-package)
 langchain-core>=0.3.0,<0.4
-langchain-google-genai>=2.0.0,<3
+langchain-openai>=0.2.0,<0.4
 langchain-pinecone>=0.2.0,<0.3
 langchain-text-splitters>=0.3.0,<0.4
 
