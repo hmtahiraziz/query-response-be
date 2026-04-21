@@ -7,11 +7,11 @@ import logging
 import time
 from typing import Any
 
-from pymongo import DESCENDING, MongoClient
+from pymongo import DESCENDING, MongoClient, ReturnDocument
 from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
 
-from app.config import MANIFEST_PATH, get_settings
+from app.core.config import MANIFEST_PATH, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,19 @@ def ensure_indexes() -> None:
         migrate_from_json_if_empty()
     except Exception:
         logger.exception("manifest_mongo: migrate_from_json_if_empty failed")
+    try:
+        backfill_missing_embedding_provider()
+    except Exception:
+        logger.exception("manifest_mongo: backfill_missing_embedding_provider failed")
+
+
+def backfill_missing_embedding_provider() -> None:
+    """Documents ingested before OpenAI migration had no embedding_provider field."""
+    coll = _collection()
+    coll.update_many(
+        {"embedding_provider": {"$nin": ["gemini", "openai"]}},
+        {"$set": {"embedding_provider": "gemini"}},
+    )
 
 
 def migrate_from_json_if_empty() -> None:
@@ -96,19 +109,46 @@ def upsert_one(
     pdf_path: str,
     pages: int,
     chunks: int,
+    embedding_provider: str = "openai",
 ) -> None:
     coll = _collection()
-    doc: dict[str, Any] = {
-        "_id": project_id,
-        "project_id": project_id,
-        "name": name,
-        "filename": filename,
-        "pdf_path": pdf_path,
-        "pages": pages,
-        "chunks": chunks,
-        "created_at": int(time.time()),
-    }
-    coll.replace_one({"_id": project_id}, doc, upsert=True)
+    coll.update_one(
+        {"_id": project_id},
+        {
+            "$set": {
+                "project_id": project_id,
+                "name": name,
+                "filename": filename,
+                "pdf_path": pdf_path,
+                "pages": pages,
+                "chunks": chunks,
+                "embedding_provider": embedding_provider,
+            },
+            "$setOnInsert": {"created_at": int(time.time())},
+        },
+        upsert=True,
+    )
+
+
+def set_project_summary(project_id: str, summary: dict[str, Any]) -> dict[str, Any] | None:
+    coll = _collection()
+    now = int(time.time())
+    row = coll.find_one_and_update(
+        {"$or": [{"_id": project_id}, {"project_id": project_id}]},
+        {
+            "$set": {
+                "ai_summary": dict(summary),
+                "summary_generated_at": now,
+            }
+        },
+        return_document=ReturnDocument.AFTER,
+    )
+    if not row:
+        return None
+    pid = str(row.get("project_id") or row.get("_id"))
+    item = {k: v for k, v in row.items() if k != "_id"}
+    item["project_id"] = pid
+    return item
 
 
 def delete_one(project_id: str) -> dict[str, Any] | None:
