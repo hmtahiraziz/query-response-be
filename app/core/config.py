@@ -91,6 +91,19 @@ class Settings(BaseSettings):
         description="Collection for ingested project metadata (replaces data/projects.json when MongoDB is set)",
     )
 
+    slack_bot_token: str | None = Field(
+        default=None,
+        description="Slack bot token (xoxb-…). With SLACK_SIGNING_SECRET, mounts POST /slack/events.",
+    )
+    slack_signing_secret: str | None = Field(
+        default=None,
+        description="Slack app signing secret (verifies Requests from Slack).",
+    )
+    slack_slash_command: str = Field(
+        default="portfolio-brief",
+        description="Slash command name without leading slash (must match Slack app command).",
+    )
+
     def cors_origin_list(self) -> list[str]:
         out: list[str] = []
         for o in self.cors_origins.split(","):
@@ -98,6 +111,9 @@ class Settings(BaseSettings):
             if s:
                 out.append(s)
         return out
+
+    def slack_integration_enabled(self) -> bool:
+        return bool((self.slack_bot_token or "").strip() and (self.slack_signing_secret or "").strip())
 
 
 @lru_cache
