@@ -15,3 +15,6 @@ pinecone[grpc]>=5.0.0,<6
 pymupdf>=1.24.0,<2
 python-dotenv>=1.0.0,<2
 pymongo>=4.9.0,<5
+
+# Slack (optional: mount POST /slack/events when SLACK_BOT_TOKEN + SLACK_SIGNING_SECRET are set)
+slack-bolt>=1.18.0,<2
