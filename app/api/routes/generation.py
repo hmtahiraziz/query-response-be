@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import logging
-import uuid
 
 from fastapi import APIRouter, HTTPException
 
 from app.api.deps import SettingsDep
 from app.schemas import CoverLetterRequest, CoverLetterResponse, RefineCoverLetterRequest, RefineCoverLetterResponse
-from app.services.cover_letter_history_service import append_entry
-from app.services.cover_letter_service import generate_cover_letter, refine_cover_letter
+from app.services.cover_letter_generation_flow import CoverLetterGenError, generate_cover_letter_response
+from app.services.cover_letter_service import refine_cover_letter
 from app.services.manifest_service import list_projects
 from app.services.pinecone_errors import pinecone_connection_user_hint
 
@@ -22,40 +21,14 @@ def post_cover_letter(
     body: CoverLetterRequest,
     settings: SettingsDep,
 ) -> CoverLetterResponse:
-    if not list_projects(openai_only=True):
-        raise HTTPException(
-            status_code=400,
-            detail="No OpenAI-indexed projects yet. Upload at least one PDF (legacy Gemini projects are hidden).",
-        )
-
-    k = body.k if body.k is not None else settings.rag_k
-
     try:
-        letter, sources = generate_cover_letter(
+        return generate_cover_letter_response(
             body.query,
-            k=k,
-            settings=settings,
+            body.k,
+            settings,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        logger.exception("Cover letter generation failed")
-        hint = pinecone_connection_user_hint(exc)
-        raise HTTPException(
-            status_code=503 if hint else 502,
-            detail=hint if hint else f"Generation failed: {exc}",
-        ) from exc
-
-    history_id = str(uuid.uuid4())
-    append_entry(
-        query=body.query,
-        k=k,
-        cover_letter=letter,
-        sources=[s.model_dump() for s in sources],
-        entry_id=history_id,
-    )
-
-    return CoverLetterResponse(cover_letter=letter, sources=sources, history_id=history_id)
+    except CoverLetterGenError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post("/cover-letter/refine", response_model=RefineCoverLetterResponse)
